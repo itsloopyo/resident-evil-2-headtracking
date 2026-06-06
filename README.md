@@ -1,3 +1,10 @@
+> [!CAUTION]
+> ## Experimental prototype - expect missing core features
+>
+> This is **not** a finished mod.
+>
+> Current builds may only test whether head tracking can drive the camera. Bug fixes and core features like decoupled look/aim, independent reticle behavior, correct shot direction, off-screen reticle support, movement handling, and comfort tuning may be missing at this early stage of development.
+
 # Resident Evil 2 Head Tracking
 
 Resident Evil 2 Head Tracking lets you move the in-game camera with your head while your mouse or controller still controls aim independently, adding immersion with no VR headset required.

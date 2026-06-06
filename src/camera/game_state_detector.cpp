@@ -1,11 +1,13 @@
 #include "pch.h"
 #include "game_state_detector.h"
-#include "ref_utils.h"
 #include "core/logger.h"
 
 #include <reframework/API.hpp>
+#include <cameraunlock/reframework/managed_utils.h>
 
 namespace RE2HT {
+
+namespace ref = cameraunlock::reframework;
 
 // RE2 (app.ropeway) game-state signals, confirmed at runtime:
 //   PlayerManager.get_CurrentPlayer()          null  => menu / loading
@@ -102,19 +104,19 @@ void RefreshGameState() {
                 auto pmgr = api->get_managed_singleton(kPlayerManager);
                 if (!pmgr) { suppressReason = "no PlayerManager"; __leave; }
 
-                if (!InvokePtr(g_state.getCurrentPlayer, pmgr)) {
+                if (!ref::CallMethod(g_state.getCurrentPlayer, pmgr)) {
                     suppressReason = "no player (menu/loading)";
                     __leave;
                 }
 
-                auto condition = InvokePtr(g_state.getCurrentPlayerCondition, pmgr);
-                if (condition && InvokeBool(g_state.getIsEvent, condition)) {
+                auto condition = ref::CallMethod(g_state.getCurrentPlayerCondition, pmgr);
+                if (condition && ref::CallMethodBool(g_state.getIsEvent, condition)) {
                     suppressReason = "cutscene";
                     __leave;
                 }
 
                 auto gui = api->get_managed_singleton(kGuiMaster);
-                if (gui && InvokeBool(g_state.getIsOpenPause, gui)) {
+                if (gui && ref::CallMethodBool(g_state.getIsOpenPause, gui)) {
                     suppressReason = "paused";
                     __leave;
                 }

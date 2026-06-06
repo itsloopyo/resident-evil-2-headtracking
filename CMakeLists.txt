@@ -10,8 +10,10 @@ if(WIN32)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
-# cameraunlock-core shared library (static)
+# cameraunlock-core shared library (static) with REFramework utilities
 set(CAMERAUNLOCK_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(CAMERAUNLOCK_BUILD_REFRAMEWORK ON CACHE BOOL "" FORCE)
+set(CAMERAUNLOCK_REFRAMEWORK_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/extern CACHE PATH "" FORCE)
 add_subdirectory(cameraunlock-core/cpp ${CMAKE_BINARY_DIR}/cameraunlock-core)
 
 # Plugin sources
@@ -22,7 +24,6 @@ add_library(RE2HeadTracking SHARED
     src/core/config.cpp
     src/core/logger.cpp
     src/camera/camera_hook.cpp
-    src/camera/camera_math.cpp
     src/camera/game_state_detector.cpp
 )
 
@@ -34,7 +35,7 @@ set_target_properties(RE2HeadTracking PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin"
 )
 
-target_link_libraries(RE2HeadTracking PRIVATE cameraunlock ws2_32)
+target_link_libraries(RE2HeadTracking PRIVATE cameraunlock cameraunlock_reframework ws2_32)
 
 target_include_directories(RE2HeadTracking PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -48,10 +49,8 @@ if(RE2HT_BUILD_TESTS)
     add_executable(re2ht_tests
         tests/test_main.cpp
         tests/config_tests.cpp
-        tests/camera_math_tests.cpp
         src/core/config.cpp
         src/core/logger.cpp
-        src/camera/camera_math.cpp
     )
     target_include_directories(re2ht_tests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
