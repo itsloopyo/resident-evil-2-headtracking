@@ -11,6 +11,7 @@ $ErrorActionPreference = "Stop"
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $projectDir = Split-Path -Parent $scriptDir
 $manifestPath = Join-Path $projectDir "manifest.json"
+$modManifestPath = Join-Path $projectDir "launcher-manifest.json"
 $cmakePath = Join-Path $projectDir "CMakeLists.txt"
 $constantsPath = Join-Path $projectDir "src\core\constants.h"
 
@@ -29,6 +30,13 @@ function Set-Version {
     $json = Get-Content $manifestPath -Raw | ConvertFrom-Json
     $json.version = $NewVersion
     $json | ConvertTo-Json -Depth 10 | Set-Content $manifestPath -NoNewline
+
+    # launcher-manifest.json is the launcher's canonical manifest (the file
+    # lopari reads); keep mod_info.version in lockstep so lopari never reads a
+    # stale package version.
+    $modJson = Get-Content $modManifestPath -Raw | ConvertFrom-Json
+    $modJson.mod_info.version = $NewVersion
+    $modJson | ConvertTo-Json -Depth 10 | Set-Content $modManifestPath -NoNewline
 
     (Get-Content $cmakePath -Raw) `
         -replace 'project\(RE2HeadTracking VERSION \d+\.\d+\.\d+ LANGUAGES CXX\)', "project(RE2HeadTracking VERSION $NewVersion LANGUAGES CXX)" `
@@ -124,7 +132,7 @@ if (-not $hasExistingTags) {
 
 # Commit
 Write-Host "Committing version change..." -ForegroundColor Cyan
-git add $manifestPath $cmakePath $constantsPath $changelogPath $installCmdPath
+git add $manifestPath $modManifestPath $cmakePath $constantsPath $changelogPath $installCmdPath
 git commit -m "Release v$Version"
 
 # Tag
