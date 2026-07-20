@@ -222,6 +222,13 @@ static bool ComputeMarkerFocalLengths(float& fx, float& fy) {
                     Logger::Instance().Info("Projection matrix focal lengths: P00=%.4f P11=%.4f fx=%.1f fy=%.1f",
                                             retMat[0], retMat[5], fx, fy);
                 }
+                // Square pixels: horizontal and vertical pixel focal lengths must
+                // match. RE2's matrix reports them equal, but the RE3 build proved
+                // this projection path can return P00 at half its true value
+                // (fx ends up half of fy), which under-compensates yaw and drifts
+                // the reticle/markers horizontally. fy (vertical) is the trusted
+                // value; enforce fx = fy so a divergent matrix can never slip through.
+                fx = fy;
                 return true;
             }
         }
