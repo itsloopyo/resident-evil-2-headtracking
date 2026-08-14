@@ -80,9 +80,17 @@ jobs:
       - name: Generate release notes
         shell: pwsh
         run: |
-          powershell -ExecutionPolicy Bypass -File cameraunlock-core/scripts/generate-release-notes.ps1 `
+          # Build the array in-step: `powershell -File` binds every argument as
+          # a literal, so the paths arrive as one blob that matches no files.
+          $artifactPaths = @(
+            'src',
+            'cameraunlock-core',
+            'scripts/install.cmd',
+            'scripts/uninstall.cmd'
+          )
+          & cameraunlock-core/scripts/generate-release-notes.ps1 `
             -Version $env:VERSION `
-            -ArtifactPaths "src/","cameraunlock-core/","scripts/install.cmd","scripts/uninstall.cmd" `
+            -ArtifactPaths $artifactPaths `
             -ProjectName "RE2HeadTracking" `
             -OutputFile release-notes.txt
           if ($LASTEXITCODE -ne 0) {
