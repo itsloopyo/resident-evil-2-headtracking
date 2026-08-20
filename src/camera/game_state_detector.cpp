@@ -36,7 +36,6 @@ static struct {
     bool stateMethodsAvailable = false;
 
     bool wasInGameplay = false;
-    bool pendingRecenter = false;
 } g_state;
 
 void RefreshGameState() {
@@ -133,8 +132,7 @@ void RefreshGameState() {
     g_state.inGameplay = newState;
 
     if (g_state.inGameplay && !g_state.wasInGameplay) {
-        g_state.pendingRecenter = true;
-        Logger::Instance().Info("Game state: entered gameplay - pending recenter");
+        Logger::Instance().Info("Game state: entered gameplay");
     } else if (!g_state.inGameplay && g_state.wasInGameplay) {
         Logger::Instance().Info("Game state: left gameplay (%s)",
             suppressReason ? suppressReason : "no camera");
@@ -145,14 +143,6 @@ void RefreshGameState() {
 bool IsInGameplay() {
     RefreshGameState();
     return g_state.inGameplay;
-}
-
-bool ShouldRecenter() {
-    if (g_state.pendingRecenter) {
-        g_state.pendingRecenter = false;
-        return true;
-    }
-    return false;
 }
 
 } // namespace RE2HT

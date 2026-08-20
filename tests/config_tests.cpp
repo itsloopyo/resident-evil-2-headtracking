@@ -98,13 +98,33 @@ int RunConfigTests() {
         RemoveTmp();
     }
 
-    // Position smoothing clamped to [0, 0.99].
+    // Both smoothing values are clamped to [0, 1]. Validation only: there is no
+    // minimum floor, so a configured 0.0 survives.
     {
-        WriteIni("[Position]\nSmoothing=5.0\n");
+        WriteIni("[Smoothing]\nLocalSmoothing=5.0\nRemoteSmoothing=-1.0\n");
         Config cfg;
         cfg.Load(TmpPath().c_str());
-        Check(NearEqual(cfg.positionSmoothing, 0.99f), "position smoothing clamped to 0.99");
+        Check(NearEqual(cfg.localSmoothing, 1.0f), "local smoothing clamped to 1.0");
+        Check(NearEqual(cfg.remoteSmoothing, 0.0f), "remote smoothing clamped to 0.0");
         RemoveTmp();
+    }
+
+    // A configured zero is honoured, not floored to a baseline.
+    {
+        WriteIni("[Smoothing]\nLocalSmoothing=0.0\nRemoteSmoothing=0.0\n");
+        Config cfg;
+        cfg.Load(TmpPath().c_str());
+        Check(NearEqual(cfg.localSmoothing, 0.0f), "zero local smoothing not floored");
+        Check(NearEqual(cfg.remoteSmoothing, 0.0f), "zero remote smoothing not floored");
+        RemoveTmp();
+    }
+
+    // Defaults: local is zero-latency, remote carries the 0.15 the old baseline used.
+    {
+        Config cfg;
+        cfg.SetDefaults();
+        Check(NearEqual(cfg.localSmoothing, 0.0f), "default local smoothing is 0.0");
+        Check(NearEqual(cfg.remoteSmoothing, 0.15f), "default remote smoothing is 0.15");
     }
 
     // A missing file leaves defaults intact and reports failure.
