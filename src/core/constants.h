@@ -4,7 +4,7 @@
 
 namespace RE2HT {
 
-inline constexpr const char* RE2HT_VERSION = "0.1.0";
+inline constexpr const char* RE2HT_VERSION = "0.0.0";
 
 inline constexpr uint16_t DEFAULT_UDP_PORT = 4242;
 
