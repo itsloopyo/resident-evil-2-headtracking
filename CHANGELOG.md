@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.1.0] - 2026-08-20
+
+### Added
+
+- drop mod-side centring, split smoothing into local and remote
+
+### Fixed
+
+- show full control set in pixi install via shared -Controls
+
+### Other
+
+- Hello world
+- Migrate RE2 head tracking onto cameraunlock-core shared utilities
+
 ## [Unreleased]
 
 ### Logging
