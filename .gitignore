@@ -20,3 +20,8 @@ AGENTS.md
 *.pdb
 *.exe
 NEXUS_MODS.md
+
+# Reverse-engineering scratch. Probe scripts, traces, memory dumps, decompiler
+# exports and screenshots stay on disk and never reach the remote: deleting a
+# pushed blob does not unpublish it, so the ignore has to be in place first.
+tools/

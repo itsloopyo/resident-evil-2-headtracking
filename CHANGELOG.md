@@ -8,6 +8,22 @@
 - A one-shot `First tracker pose received: yaw/pitch/roll (local|remote connection)` line the first time a tracker packet reaches the mod. It is emitted ahead of every enable/gameplay gate, so its absence means the packets never arrived rather than that tracking was off or the camera hook had not engaged.
 - Troubleshooting now names the log file to send (`<game>/re2_framework_log.txt`, truncated per launch) and the startup lines to look for in it.
 
+### Legal and packaging
+
+- `THIRD-PARTY-NOTICES.md` now records REFramework twice, once as the bundled
+  loader and once as the plugin API headers compiled into
+  `RE2HeadTracking.dll`, and reproduces the MIT text for both. It also
+  reproduces cameraunlock-core's MIT notice, which is a different copyright
+  holder from this mod's LICENSE and so is not covered by it.
+- Corrected the REFramework revision recorded in the notices and in
+  `vendor/reframework/README.md`. The commit previously named there belongs to
+  the release-hosting repo, not to REFramework; the source revision the vendored
+  loader was built from is `ec6c81fd39831b328027ae00e102bc9c9c3f8aa5`, matching
+  the archive's own `reframework_revision.txt`.
+- The Nexus ZIP now carries `LICENSE` and `THIRD-PARTY-NOTICES.md` at its root.
+  It previously held only the DLL and INI, which met neither notice obligation.
+  The packager fails rather than skipping a missing notice file, for both ZIPs.
+
 ### Changed
 - The mod keeps no centre of its own. Every tracker app centres itself, so a
   centre in the mod was a second one in series with the tracker's, and the two
