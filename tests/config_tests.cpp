@@ -88,14 +88,17 @@ int RunConfigTests() {
         RemoveTmp();
     }
 
-    // Sensitivity multipliers are clamped to their documented ranges.
+    // Sensitivity multipliers are clamped to their documented ranges. The floor
+    // is 0 and the ceiling 5.0 on all three axes: pinning one rotation axis is
+    // exactly what a 0 multiplier is for, and the old per-axis bounds refused
+    // that on yaw and pitch while allowing it on roll.
     {
         WriteIni("[Sensitivity]\nYawMultiplier=99\nPitchMultiplier=-5\nRollMultiplier=10\n");
         Config cfg;
         cfg.Load(TmpPath().c_str(), kSchema);
         Check(NearEqual(cfg.yawMultiplier, 5.0f), "yaw multiplier clamped to max 5.0");
-        Check(NearEqual(cfg.pitchMultiplier, 0.1f), "pitch multiplier clamped to min 0.1");
-        Check(NearEqual(cfg.rollMultiplier, 2.0f), "roll multiplier clamped to max 2.0");
+        Check(NearEqual(cfg.pitchMultiplier, 0.0f), "pitch multiplier clamped to min 0.0");
+        Check(NearEqual(cfg.rollMultiplier, 5.0f), "roll multiplier clamped to max 5.0");
         RemoveTmp();
     }
 

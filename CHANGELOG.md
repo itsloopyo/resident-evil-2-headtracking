@@ -25,6 +25,10 @@
   The packager fails rather than skipping a missing notice file, for both ZIPs.
 
 ### Changed
+- `Page Up` / `Ctrl+Shift+G` turns positional tracking off and on again instead
+  of cycling three modes. The third mode disabled head rotation, and it sat
+  directly after the mode a `[Position] Enabled=false` config starts in, so one
+  press of a key labelled "toggle position" switched head rotation off.
 - The mod keeps no centre of its own. Every tracker app centres itself, so a
   centre in the mod was a second one in series with the tracker's, and the two
   drifted apart because each side moved at moments the other could not see.
@@ -42,8 +46,8 @@
 - Aim decoupling: head moves the camera, mouse controls aim independently
 - Game state detection: tracking pauses during cutscenes, menus, loading, and pause screens
 - Crosshair projection with smoothing to keep the reticle on the aim point
-- Nav-cluster hotkeys: toggle (End), position toggle (PgUp), reticle toggle (Delete)
-- Ctrl+Shift chord hotkeys (Y toggle, G position, H yaw mode, U reticle) for keyboards without a nav cluster
+- Nav-cluster hotkeys: toggle (End), position toggle (PgUp), yaw mode (PgDn)
+- Ctrl+Shift chord hotkeys (Y toggle, G position, H yaw mode) for keyboards without a nav cluster
 - INI configuration file with sensitivity, position limits, smoothing, and hotkey settings
 - Automated installer with vendored REFramework
 - Frame-rate independent smoothing and interpolation pipeline

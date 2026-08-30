@@ -15,6 +15,7 @@ inline constexpr cameraunlock::reframework::PluginConfigSchema kConfigSchema{
     /*flashlight*/ false,
     /*diagnosticMarkerKey*/ false,
     /*positionSensitivity*/ 2.0f,
+    /*modId*/ "re2",
 };
 
 } // namespace RE2HT

@@ -27,6 +27,16 @@ static bool IsCompensatedGuiElement(const char* goName) {
 // Shift a GUI element's View to the head-tracked screen position of the clean
 // aim point, so world-anchored markers and the HUD/crosshair stay locked to
 // where the game is actually aiming while the head turns the view.
+//
+// The aim projection subtracts the head's own position, so this carries a
+// parallax term as well as the rotation - but at the descriptor's 50 m aim
+// range, which is right for the reticle (it marks a direction) and far too long
+// for a marker on an item across the room. A 0.30 m lean shifts a 50 m anchor by
+// about 4 px and a 3 m anchor by about 70 px, and the second is what the markers
+// get. The depth that would fix it is not reachable here: get_GlobalPosition is
+// a canvas position, RE2's marker elements arrive flat with no anchor read at
+// all, and neither GUI_FloatIcon nor GUI_Purpose has a near/far pair bounding
+// the range an assumed depth could be pinned to.
 static void ApplyGuiViewCenterOffset(reframework::API::ManagedObject* mo) {
     const auto& projection = ref::GetFrameProjection();
 
