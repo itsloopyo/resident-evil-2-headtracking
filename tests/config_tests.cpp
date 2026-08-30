@@ -7,7 +7,6 @@
 // range check that replaced an unchecked uint16_t truncation.
 
 #include "core/config.h"
-#include "core/logger.h"
 
 #include <cmath>
 #include <cstdio>
@@ -57,6 +56,7 @@ void RemoveTmp() {
 
 int RunConfigTests() {
     using RE2HT::Config;
+    constexpr auto& kSchema = RE2HT::kConfigSchema;
 
     std::cout << "Config tests\n";
 
@@ -65,8 +65,8 @@ int RunConfigTests() {
     {
         WriteIni("[Network]\nUDPPort=70000\n");
         Config cfg;
-        cfg.Load(TmpPath().c_str());
-        Check(cfg.udpPort == RE2HT::DEFAULT_UDP_PORT, "out-of-range port falls back to default");
+        cfg.Load(TmpPath().c_str(), kSchema);
+        Check(cfg.udpPort == cameraunlock::reframework::kDefaultUdpPort, "out-of-range port falls back to default");
         RemoveTmp();
     }
 
@@ -74,8 +74,8 @@ int RunConfigTests() {
     {
         WriteIni("[Network]\nUDPPort=80\n");
         Config cfg;
-        cfg.Load(TmpPath().c_str());
-        Check(cfg.udpPort == RE2HT::DEFAULT_UDP_PORT, "reserved low port falls back to default");
+        cfg.Load(TmpPath().c_str(), kSchema);
+        Check(cfg.udpPort == cameraunlock::reframework::kDefaultUdpPort, "reserved low port falls back to default");
         RemoveTmp();
     }
 
@@ -83,7 +83,7 @@ int RunConfigTests() {
     {
         WriteIni("[Network]\nUDPPort=5005\n");
         Config cfg;
-        cfg.Load(TmpPath().c_str());
+        cfg.Load(TmpPath().c_str(), kSchema);
         Check(cfg.udpPort == 5005, "valid port preserved");
         RemoveTmp();
     }
@@ -92,7 +92,7 @@ int RunConfigTests() {
     {
         WriteIni("[Sensitivity]\nYawMultiplier=99\nPitchMultiplier=-5\nRollMultiplier=10\n");
         Config cfg;
-        cfg.Load(TmpPath().c_str());
+        cfg.Load(TmpPath().c_str(), kSchema);
         Check(NearEqual(cfg.yawMultiplier, 5.0f), "yaw multiplier clamped to max 5.0");
         Check(NearEqual(cfg.pitchMultiplier, 0.1f), "pitch multiplier clamped to min 0.1");
         Check(NearEqual(cfg.rollMultiplier, 2.0f), "roll multiplier clamped to max 2.0");
@@ -104,7 +104,7 @@ int RunConfigTests() {
     {
         WriteIni("[Smoothing]\nLocalSmoothing=5.0\nRemoteSmoothing=-1.0\n");
         Config cfg;
-        cfg.Load(TmpPath().c_str());
+        cfg.Load(TmpPath().c_str(), kSchema);
         Check(NearEqual(cfg.localSmoothing, 1.0f), "local smoothing clamped to 1.0");
         Check(NearEqual(cfg.remoteSmoothing, 0.0f), "remote smoothing clamped to 0.0");
         RemoveTmp();
@@ -114,7 +114,7 @@ int RunConfigTests() {
     {
         WriteIni("[Smoothing]\nLocalSmoothing=0.0\nRemoteSmoothing=0.0\n");
         Config cfg;
-        cfg.Load(TmpPath().c_str());
+        cfg.Load(TmpPath().c_str(), kSchema);
         Check(NearEqual(cfg.localSmoothing, 0.0f), "zero local smoothing not floored");
         Check(NearEqual(cfg.remoteSmoothing, 0.0f), "zero remote smoothing not floored");
         RemoveTmp();
@@ -126,12 +126,12 @@ int RunConfigTests() {
     // INI reach exp() in the smoothing pipeline with nothing logged.
     {
         Config cfg;
-        cfg.SetDefaults();
+        cfg.SetDefaults(kSchema);
         cfg.localSmoothing = std::numeric_limits<float>::quiet_NaN();
         cfg.remoteSmoothing = std::numeric_limits<float>::infinity();
         cfg.yawMultiplier = -std::numeric_limits<float>::infinity();
         cfg.positionLimitZ = std::numeric_limits<float>::quiet_NaN();
-        cfg.Validate();
+        cfg.Validate(kSchema);
         Check(NearEqual(cfg.localSmoothing, 0.0f), "NaN local smoothing falls back to default");
         Check(NearEqual(cfg.remoteSmoothing, 0.15f), "Inf remote smoothing falls back to default");
         Check(NearEqual(cfg.yawMultiplier, 1.0f), "-Inf yaw multiplier falls back to default");
@@ -143,7 +143,7 @@ int RunConfigTests() {
     {
         WriteIni("[Smoothing]\nLocalSmoothing=nan\n[Sensitivity]\nPitchMultiplier=1e400\n");
         Config cfg;
-        cfg.Load(TmpPath().c_str());
+        cfg.Load(TmpPath().c_str(), kSchema);
         Check(std::isfinite(cfg.localSmoothing), "INI 'nan' smoothing sanitized");
         Check(std::isfinite(cfg.pitchMultiplier), "INI overflow multiplier sanitized");
         RemoveTmp();
@@ -152,7 +152,7 @@ int RunConfigTests() {
     // Defaults: local is zero-latency, remote carries the 0.15 the old baseline used.
     {
         Config cfg;
-        cfg.SetDefaults();
+        cfg.SetDefaults(kSchema);
         Check(NearEqual(cfg.localSmoothing, 0.0f), "default local smoothing is 0.0");
         Check(NearEqual(cfg.remoteSmoothing, 0.15f), "default remote smoothing is 0.15");
     }
@@ -161,21 +161,21 @@ int RunConfigTests() {
     {
         RemoveTmp();
         Config cfg;
-        bool ok = cfg.Load(TmpPath().c_str());
+        bool ok = cfg.Load(TmpPath().c_str(), kSchema);
         Check(!ok, "missing file reports load failure");
-        Check(cfg.udpPort == RE2HT::DEFAULT_UDP_PORT, "missing file keeps default port");
+        Check(cfg.udpPort == cameraunlock::reframework::kDefaultUdpPort, "missing file keeps default port");
     }
 
     // Save then load round-trips a non-default value.
     {
         Config saved;
-        saved.SetDefaults();
+        saved.SetDefaults(kSchema);
         saved.udpPort = 6006;
         saved.worldSpaceYaw = false;
-        Check(saved.Save(TmpPath().c_str()), "save succeeds");
+        Check(saved.Save(TmpPath().c_str(), kSchema), "save succeeds");
 
         Config loaded;
-        Check(loaded.Load(TmpPath().c_str()), "reload succeeds");
+        Check(loaded.Load(TmpPath().c_str(), kSchema), "reload succeeds");
         Check(loaded.udpPort == 6006, "round-trip preserves port");
         Check(loaded.worldSpaceYaw == false, "round-trip preserves worldSpaceYaw");
         RemoveTmp();
