@@ -11,6 +11,7 @@
 
 #include <cmath>
 #include <cstdio>
+#include <limits>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -116,6 +117,35 @@ int RunConfigTests() {
         cfg.Load(TmpPath().c_str());
         Check(NearEqual(cfg.localSmoothing, 0.0f), "zero local smoothing not floored");
         Check(NearEqual(cfg.remoteSmoothing, 0.0f), "zero remote smoothing not floored");
+        RemoveTmp();
+    }
+
+    // Non-finite input must not survive validation. std::clamp returns NaN
+    // unchanged (both NaN < lo and hi < NaN are false), so the clamp-based
+    // Validate this replaced let a "nan" or an overflowing literal out of the
+    // INI reach exp() in the smoothing pipeline with nothing logged.
+    {
+        Config cfg;
+        cfg.SetDefaults();
+        cfg.localSmoothing = std::numeric_limits<float>::quiet_NaN();
+        cfg.remoteSmoothing = std::numeric_limits<float>::infinity();
+        cfg.yawMultiplier = -std::numeric_limits<float>::infinity();
+        cfg.positionLimitZ = std::numeric_limits<float>::quiet_NaN();
+        cfg.Validate();
+        Check(NearEqual(cfg.localSmoothing, 0.0f), "NaN local smoothing falls back to default");
+        Check(NearEqual(cfg.remoteSmoothing, 0.15f), "Inf remote smoothing falls back to default");
+        Check(NearEqual(cfg.yawMultiplier, 1.0f), "-Inf yaw multiplier falls back to default");
+        Check(NearEqual(cfg.positionLimitZ, 0.40f), "NaN position limit falls back to default");
+    }
+
+    // The same path through the INI parser, which accepts "nan" and overflows
+    // large literals to +inf.
+    {
+        WriteIni("[Smoothing]\nLocalSmoothing=nan\n[Sensitivity]\nPitchMultiplier=1e400\n");
+        Config cfg;
+        cfg.Load(TmpPath().c_str());
+        Check(std::isfinite(cfg.localSmoothing), "INI 'nan' smoothing sanitized");
+        Check(std::isfinite(cfg.pitchMultiplier), "INI overflow multiplier sanitized");
         RemoveTmp();
     }
 

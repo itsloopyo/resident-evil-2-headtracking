@@ -506,11 +506,8 @@ void OnPreBeginRendering() {
     UpdateCrosshairProjection(g_cleanCameraMatrix.matrix, *worldMat);
 }
 
-// Post-BeginRendering: restore clean ROTATION so aim direction follows the
-// mouse, but keep head-tracked POSITION so the aim origin matches the lean.
-// The GUI camera captures position during rendering, shifting the reticle.
-// If we also restore clean position, bullets fire from a different origin
-// than what the reticle shows → shots miss where the reticle points.
+// Post-BeginRendering: hand the game back exactly the camera it computed, so
+// aim, raycasts and physics never see head-tracked state.
 void OnPostBeginRendering() {
     if (!g_trackingAppliedThisFrame) return;
     g_trackingAppliedThisFrame = false;
@@ -526,18 +523,20 @@ void OnPostBeginRendering() {
     Matrix4x4f* worldMat = reinterpret_cast<Matrix4x4f*>(
         reinterpret_cast<uint8_t*>(transform) + ref::kTransformWorldMatrixOffset);
     __try {
-        // Save head-tracked position before restoring
-        float hx = worldMat->m[3][0];
-        float hy = worldMat->m[3][1];
-        float hz = worldMat->m[3][2];
-
-        // Restore clean rotation (3x3) + clean row 3 w component
+        // Restore the clean camera in full - POSITION as well as rotation.
+        //
+        // Keeping the head-tracked translation row left the game aiming off a
+        // leaned eye: the shot converges on the leaned eye's axis while the
+        // round leaves the un-leaned body, so reticle and impact agree at
+        // exactly one range and splay apart either side of it, swapping sides
+        // as the player walks through it. Head tracking must not move where
+        // bullets go.
+        //
+        // The lean still renders. Rotation is written and taken back at the
+        // same two hooks and rotation is what the player sees, so the camera
+        // matrix the renderer consumes is snapshotted between them; the
+        // translation row is in that same matrix.
         *worldMat = g_cleanCameraMatrix.matrix;
-
-        // Re-apply head-tracked position so aim origin matches lean
-        worldMat->m[3][0] = hx;
-        worldMat->m[3][1] = hy;
-        worldMat->m[3][2] = hz;
     } __except(EXCEPTION_EXECUTE_HANDLER) {}
 
     g_cachedTransform = nullptr;
