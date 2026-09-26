@@ -23,14 +23,12 @@ $projectRoot = Split-Path -Parent $scriptDir
 Import-Module (Join-Path $projectRoot "cameraunlock-core\powershell\DevDeploy.psm1") -Force
 Import-Module (Join-Path $projectRoot "cameraunlock-core\powershell\ModDeployment.psm1") -Force
 $buildOutput = Join-Path $projectRoot "bin\$Configuration"
-$configFile = Join-Path $projectRoot 'HeadTracking.ini'
 $vendorRefZip = Join-Path $projectRoot 'vendor\reframework\RE2.zip'
 $result = Invoke-DevDeployREFramework `
     -GameId 'resident-evil-2' `
     -GameDisplayName 'Resident Evil 2' `
     -BuildOutputPath $buildOutput `
     -ModDllName 'RE2HeadTracking.dll' `
-    -ConfigFile $configFile `
     -VendorReframeworkZip $vendorRefZip `
     -ExtraDlls @() `
     -GivenPath $GivenPath
@@ -40,9 +38,8 @@ Write-DeploymentSuccess `
     -DeployPath $result.DeployedDllPath `
     -Controls @(
         "End       - Toggle head tracking on/off",
-        "Page Up   - Cycle tracking mode (full / rotation-only / position-only)",
-        "Insert    - Toggle reticle",
+        "Page Up   - Toggle positional tracking",
         "Page Down - Toggle yaw mode (world / local)",
         "",
-        "No nav cluster? Chords: Ctrl+Shift+ Y=Toggle G=Mode H=Yaw U=Reticle"
+        "No nav cluster? Chords: Ctrl+Shift+ Y=Toggle G=Mode H=Yaw"
     )

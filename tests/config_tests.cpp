@@ -1,193 +1,254 @@
-// Config loading / validation tests.
+// CameraUnlock.ini against the table: the committed HeadTracking.ini is the table's fresh render
+// byte for byte, the owner creates exactly those bytes, and each toggle's save changes the line of
+// its own row and no other byte. `--render-config <path>` writes the fresh render to <path>
+// instead and runs nothing else (pixi run render-config).
 //
-// HeadTracking.ini is a user-editable boundary: values flow straight into the
-// UDP bind port and the tracking-sensitivity pipeline. These tests pin the
-// validation that keeps a bad edit (out-of-range port, absurd multiplier) from
-// silently producing wrong-but-plausible behaviour - in particular the port
-// range check that replaced an unchecked uint16_t truncation.
+// Every owner here reads and creates a scratch Defaults.ini (DefaultsFile::At), never the
+// player's own.
 
-#include "core/config.h"
+#include "config_owner_options.h"
 
-#include <cmath>
+#include <cameraunlock/config/config_owner.h>
+#include <cameraunlock/config/defaults_file.h>
+#include <cameraunlock/input/key_bindings.h>
+#include <cameraunlock/reframework/plugin_config_table.h>
+
+#include <windows.h>
+
 #include <cstdio>
-#include <limits>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
-#include <iostream>
+#include <iterator>
+#include <stdexcept>
 #include <string>
+#include <vector>
+
+namespace cfg = cameraunlock::config;
+using RE2HT::Config;
 
 namespace {
 
 int g_failures = 0;
 
-void Check(bool cond, const char* name) {
-    if (cond) {
-        std::cout << "  [PASS] " << name << "\n";
-    } else {
-        std::cout << "  [FAIL] " << name << "\n";
+void Check(bool cond, const char* what) {
+    if (!cond) {
+        std::printf("  FAIL: %s\n", what);
         ++g_failures;
     }
 }
 
-bool NearEqual(float a, float b, float eps = 1e-4f) {
-    return std::fabs(a - b) <= eps;
+std::string ReadBytes(const std::wstring& path) {
+    std::ifstream in(path, std::ios::binary);
+    if (!in) throw std::runtime_error("cannot read a test file");
+    return std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
 }
 
-// Win32 GetPrivateProfile* (used by IniReader on Windows) resolves a relative
-// path against the Windows directory, not the cwd. Production builds the path
-// absolutely from the DLL location; the tests must do the same.
-const std::string& TmpPath() {
-    static const std::string path =
-        std::filesystem::absolute("re2ht_config_test.ini").string();
-    return path;
+void WriteBytes(const std::wstring& path, const std::string& bytes) {
+    std::ofstream out(path, std::ios::binary | std::ios::trunc);
+    if (!out) throw std::runtime_error("cannot write a test file");
+    out.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
 }
 
-void WriteIni(const std::string& contents) {
-    std::ofstream f(TmpPath(), std::ios::trunc);
-    f << contents;
+std::string FreshRender() {
+    return cfg::RenderCanonicalFresh(cameraunlock::reframework::PluginConfigTable(RE2HT::kConfigSchema),
+                                     RE2HT::testing::Header());
 }
 
-void RemoveTmp() {
-    std::error_code ec;
-    std::filesystem::remove(TmpPath(), ec);
+std::wstring ScratchRoot() {
+    wchar_t temp[MAX_PATH];
+    GetTempPathW(MAX_PATH, temp);
+    return std::wstring(temp) + L"re2ht-config-tests-" + std::to_wstring(GetCurrentProcessId());
+}
+
+// A fresh plugin folder in %TEMP%, with Defaults.ini in a folder of its own.
+struct Scratch {
+    std::wstring folder;
+    std::wstring defaults;
+};
+
+Scratch MakeScratch(const wchar_t* name) {
+    const std::wstring root = ScratchRoot();
+    CreateDirectoryW(root.c_str(), nullptr);
+    const std::wstring dir = root + L"\\" + name;
+    if (!CreateDirectoryW(dir.c_str(), nullptr)) throw std::runtime_error("cannot create a scratch folder");
+    const std::wstring global = root + L"\\" + name + L"-global";
+    if (!CreateDirectoryW(global.c_str(), nullptr)) throw std::runtime_error("cannot create a scratch folder");
+    return {dir, global + L"\\Defaults.ini"};
+}
+
+cfg::ConfigOwnerOptions<Config> Options(const Scratch& s) {
+    return RE2HT::testing::OwnerOptions(s.folder, cfg::DefaultsFile::At(s.defaults));
+}
+
+bool Exists(const std::wstring& path) {
+    return GetFileAttributesW(path.c_str()) != INVALID_FILE_ATTRIBUTES;
+}
+
+std::vector<std::string> Lines(const std::string& bytes) {
+    std::vector<std::string> lines;
+    size_t start = 0;
+    while (start < bytes.size()) {
+        const size_t end = bytes.find("\r\n", start);
+        if (end == std::string::npos) {
+            lines.push_back(bytes.substr(start));
+            break;
+        }
+        lines.push_back(bytes.substr(start, end - start));
+        start = end + 2;
+    }
+    return lines;
+}
+
+// The lines of `after` that differ from `before`, which must have as many.
+std::vector<std::string> ChangedLines(const std::string& before, const std::string& after) {
+    const std::vector<std::string> a = Lines(before);
+    const std::vector<std::string> b = Lines(after);
+    if (a.size() != b.size()) return {"a line was added or removed"};
+    std::vector<std::string> changed;
+    for (size_t i = 0; i < a.size(); ++i) {
+        if (a[i] != b[i]) changed.push_back(b[i]);
+    }
+    return changed;
+}
+
+void CommittedFileIsTheFreshRender() {
+    std::printf("HeadTracking.ini, the committed file, is the table's fresh render\n");
+    Check(ReadBytes(RE2HT_COMMITTED_CONFIG) == FreshRender(), "run pixi run render-config after changing a row");
+}
+
+void TheFileCarriesNoPoseShapingOrReticle() {
+    std::printf("the file has no sensitivity, inversion or reticle setting\n");
+    const std::string fresh = FreshRender();
+    for (const char* banned : {"Sensitivity", "YawMultiplier", "PitchMultiplier", "RollMultiplier", "Invert", "Reticle", "Deadzone"}) {
+        Check(fresh.find(banned) == std::string::npos, banned);
+    }
+}
+
+// Every build has scaled the lean by 2.0, and the file no longer names it, so the scale has to
+// come from the schema through SetDefaults on every load: a fresh file, and one written back after
+// a toggle.
+void TheLeanScaleIsFolded() {
+    std::printf("the lean scale every build shipped, 2.0, is applied with no row naming it\n");
+    const Config defaults = cameraunlock::reframework::PluginConfigTable(RE2HT::kConfigSchema).defaults();
+    Check(defaults.positionSensitivityX == 2.0f && defaults.positionSensitivityY == 2.0f &&
+              defaults.positionSensitivityZ == 2.0f,
+          "position sensitivity is 2.0 on every axis");
+    Check(defaults.yawMultiplier == 1.0f && defaults.pitchMultiplier == 1.0f && defaults.rollMultiplier == 1.0f,
+          "rotation is 1:1");
+    Check(!defaults.positionInvertX && !defaults.positionInvertY && !defaults.positionInvertZ, "no axis is inverted");
+
+    const Scratch s = MakeScratch(L"folded");
+    {
+        cfg::ConfigOwner<Config> owner(Options(s));
+        owner.Load();
+        owner.Save([](Config& c) { c.worldSpaceYaw = false; });
+    }
+    cfg::ConfigOwner<Config> owner(Options(s));
+    const Config loaded = owner.Load().config;
+    Check(loaded.positionSensitivityX == 2.0f && loaded.positionSensitivityY == 2.0f &&
+              loaded.positionSensitivityZ == 2.0f,
+          "a saved file still loads with the 2.0 lean scale");
+}
+
+void EveryHotkeyDefaultIsTheFleets() {
+    std::printf("every hotkey list the table defaults to parses, and is the fleet's default\n");
+    const Config defaults = cameraunlock::reframework::PluginConfigTable(RE2HT::kConfigSchema).defaults();
+    for (const std::string* list :
+         {&defaults.toggleKeyBindings, &defaults.cycleTrackingModeKeyBindings, &defaults.yawModeKeyBindings}) {
+        Check(cameraunlock::input::ParseKeyBindings(*list).ok(), list->c_str());
+    }
+    Check(defaults.toggleKeyBindings == "End, Ctrl+Shift+Y", "ToggleKey is End, Ctrl+Shift+Y");
+    Check(defaults.cycleTrackingModeKeyBindings == "PageUp, Ctrl+Shift+G", "CycleTrackingModeKey is PageUp, Ctrl+Shift+G");
+    Check(defaults.yawModeKeyBindings == "PageDown, Ctrl+Shift+H", "YawModeKey is PageDown, Ctrl+Shift+H");
+    Check(defaults.worldSpaceYaw, "WorldSpaceYaw defaults to true");
+}
+
+void FirstLaunchCreatesTheCommittedFile() {
+    std::printf("the first launch with no file creates the committed bytes\n");
+    const Scratch s = MakeScratch(L"created");
+    cfg::ConfigOwner<Config> owner(Options(s));
+    const cfg::ConfigLoadResult<Config> loaded = owner.Load();
+    Check(loaded.status == cfg::ConfigLoadStatus::Created, "the load is Created");
+    Check(ReadBytes(s.folder + L"\\" + RE2HT::testing::kConfigFileName) == FreshRender(),
+          "the created file is the fresh render");
+    Check(!Exists(s.folder + L"\\" + RE2HT::testing::kLegacyFileName), "no HeadTracking.ini is written");
+    Check(Exists(s.defaults), "Defaults.ini is created where none was");
+}
+
+void TogglesSaveTheirRowsOnly() {
+    std::printf("each toggle's save writes its own row and no other byte, and End never saves\n");
+    const Scratch s = MakeScratch(L"saves");
+    const std::wstring path = s.folder + L"\\" + RE2HT::testing::kConfigFileName;
+    {
+        cfg::ConfigOwner<Config> owner(Options(s));
+        owner.Load();
+    }
+    const std::string fresh = ReadBytes(path);
+    const std::string defaultsBefore = ReadBytes(s.defaults);
+
+    // The changes PluginMod::ToggleYawMode and PluginMod::RequestCycleTrackingMode save.
+    cfg::ConfigOwner<Config> owner(Options(s));
+    owner.Load();
+    const cfg::ConfigSaveResult yaw = owner.Save([](Config& c) { c.worldSpaceYaw = false; });
+    Check(yaw.status == cfg::ConfigSaveStatus::Saved, "the yaw save is Saved");
+    Check(!yaw.log.empty(), "the log says WorldSpaceYaw no longer follows Defaults.ini");
+    const std::string afterYaw = ReadBytes(path);
+    const std::vector<std::string> yawLines = ChangedLines(fresh, afterYaw);
+    Check(yawLines.size() == 1 && yawLines[0] == "WorldSpaceYaw=false", "only WorldSpaceYaw=default became false");
+
+    const cfg::ConfigSaveResult mode = owner.Save([](Config& c) { c.positionEnabled = false; });
+    Check(mode.status == cfg::ConfigSaveStatus::Saved, "the mode save is Saved");
+    const std::vector<std::string> modeLines = ChangedLines(afterYaw, ReadBytes(path));
+    Check(modeLines.size() == 1 && modeLines[0] == "PositionEnabled=false",
+          "a mode change writes PositionEnabled and nothing else");
+
+    bool threw = false;
+    try {
+        owner.Save([](Config& c) { c.autoEnable = false; });
+    } catch (const std::exception&) {
+        threw = true;
+    }
+    Check(threw, "EnableOnStartup is not Writable: End never persists");
+
+    Check(ReadBytes(s.defaults) == defaultsBefore, "no save changes Defaults.ini");
+
+    cfg::ConfigOwner<Config> again(Options(s));
+    const cfg::ConfigLoadResult<Config> reread = again.Load();
+    Check(reread.status == cfg::ConfigLoadStatus::Canonical, "the saved file reads back as canonical");
+    Check(!reread.config.worldSpaceYaw, "the yaw choice survives a restart");
+    Check(!reread.config.positionEnabled, "the tracking mode survives a restart");
+    Check(reread.config.autoEnable, "EnableOnStartup is still the default");
 }
 
 }  // namespace
 
-int RunConfigTests() {
-    using RE2HT::Config;
-    constexpr auto& kSchema = RE2HT::kConfigSchema;
+int main(int argc, char** argv) {
+    try {
+        if (argc == 3 && std::strcmp(argv[1], "--render-config") == 0) {
+            const std::string path = argv[2];
+            WriteBytes(std::wstring(path.begin(), path.end()), FreshRender());
+            std::printf("wrote %s\n", argv[2]);
+            return 0;
+        }
 
-    std::cout << "Config tests\n";
-
-    // Out-of-range port that would wrap to a valid-but-wrong value under a raw
-    // uint16_t cast (70000 & 0xFFFF == 4464) must fall back to the default.
-    {
-        WriteIni("[Network]\nUDPPort=70000\n");
-        Config cfg;
-        cfg.Load(TmpPath().c_str(), kSchema);
-        Check(cfg.udpPort == cameraunlock::reframework::kDefaultUdpPort, "out-of-range port falls back to default");
-        RemoveTmp();
-    }
-
-    // Reserved low port rejected.
-    {
-        WriteIni("[Network]\nUDPPort=80\n");
-        Config cfg;
-        cfg.Load(TmpPath().c_str(), kSchema);
-        Check(cfg.udpPort == cameraunlock::reframework::kDefaultUdpPort, "reserved low port falls back to default");
-        RemoveTmp();
-    }
-
-    // Valid port preserved.
-    {
-        WriteIni("[Network]\nUDPPort=5005\n");
-        Config cfg;
-        cfg.Load(TmpPath().c_str(), kSchema);
-        Check(cfg.udpPort == 5005, "valid port preserved");
-        RemoveTmp();
-    }
-
-    // Sensitivity multipliers are clamped to their documented ranges. The floor
-    // is 0 and the ceiling 5.0 on all three axes: pinning one rotation axis is
-    // exactly what a 0 multiplier is for, and the old per-axis bounds refused
-    // that on yaw and pitch while allowing it on roll.
-    {
-        WriteIni("[Sensitivity]\nYawMultiplier=99\nPitchMultiplier=-5\nRollMultiplier=10\n");
-        Config cfg;
-        cfg.Load(TmpPath().c_str(), kSchema);
-        Check(NearEqual(cfg.yawMultiplier, 5.0f), "yaw multiplier clamped to max 5.0");
-        Check(NearEqual(cfg.pitchMultiplier, 0.0f), "pitch multiplier clamped to min 0.0");
-        Check(NearEqual(cfg.rollMultiplier, 5.0f), "roll multiplier clamped to max 5.0");
-        RemoveTmp();
-    }
-
-    // Both smoothing values are clamped to [0, 1]. Validation only: there is no
-    // minimum floor, so a configured 0.0 survives.
-    {
-        WriteIni("[Smoothing]\nLocalSmoothing=5.0\nRemoteSmoothing=-1.0\n");
-        Config cfg;
-        cfg.Load(TmpPath().c_str(), kSchema);
-        Check(NearEqual(cfg.localSmoothing, 1.0f), "local smoothing clamped to 1.0");
-        Check(NearEqual(cfg.remoteSmoothing, 0.0f), "remote smoothing clamped to 0.0");
-        RemoveTmp();
-    }
-
-    // A configured zero is honoured, not floored to a baseline.
-    {
-        WriteIni("[Smoothing]\nLocalSmoothing=0.0\nRemoteSmoothing=0.0\n");
-        Config cfg;
-        cfg.Load(TmpPath().c_str(), kSchema);
-        Check(NearEqual(cfg.localSmoothing, 0.0f), "zero local smoothing not floored");
-        Check(NearEqual(cfg.remoteSmoothing, 0.0f), "zero remote smoothing not floored");
-        RemoveTmp();
-    }
-
-    // Non-finite input must not survive validation. std::clamp returns NaN
-    // unchanged (both NaN < lo and hi < NaN are false), so the clamp-based
-    // Validate this replaced let a "nan" or an overflowing literal out of the
-    // INI reach exp() in the smoothing pipeline with nothing logged.
-    {
-        Config cfg;
-        cfg.SetDefaults(kSchema);
-        cfg.localSmoothing = std::numeric_limits<float>::quiet_NaN();
-        cfg.remoteSmoothing = std::numeric_limits<float>::infinity();
-        cfg.yawMultiplier = -std::numeric_limits<float>::infinity();
-        cfg.positionLimitZ = std::numeric_limits<float>::quiet_NaN();
-        cfg.Validate(kSchema);
-        Check(NearEqual(cfg.localSmoothing, 0.0f), "NaN local smoothing falls back to default");
-        Check(NearEqual(cfg.remoteSmoothing, 0.15f), "Inf remote smoothing falls back to default");
-        Check(NearEqual(cfg.yawMultiplier, 1.0f), "-Inf yaw multiplier falls back to default");
-        Check(NearEqual(cfg.positionLimitZ, 0.40f), "NaN position limit falls back to default");
-    }
-
-    // The same path through the INI parser, which accepts "nan" and overflows
-    // large literals to +inf.
-    {
-        WriteIni("[Smoothing]\nLocalSmoothing=nan\n[Sensitivity]\nPitchMultiplier=1e400\n");
-        Config cfg;
-        cfg.Load(TmpPath().c_str(), kSchema);
-        Check(std::isfinite(cfg.localSmoothing), "INI 'nan' smoothing sanitized");
-        Check(std::isfinite(cfg.pitchMultiplier), "INI overflow multiplier sanitized");
-        RemoveTmp();
-    }
-
-    // Defaults: local is zero-latency, remote carries the 0.15 the old baseline used.
-    {
-        Config cfg;
-        cfg.SetDefaults(kSchema);
-        Check(NearEqual(cfg.localSmoothing, 0.0f), "default local smoothing is 0.0");
-        Check(NearEqual(cfg.remoteSmoothing, 0.15f), "default remote smoothing is 0.15");
-    }
-
-    // A missing file leaves defaults intact and reports failure.
-    {
-        RemoveTmp();
-        Config cfg;
-        bool ok = cfg.Load(TmpPath().c_str(), kSchema);
-        Check(!ok, "missing file reports load failure");
-        Check(cfg.udpPort == cameraunlock::reframework::kDefaultUdpPort, "missing file keeps default port");
-    }
-
-    // Save then load round-trips a non-default value.
-    {
-        Config saved;
-        saved.SetDefaults(kSchema);
-        saved.udpPort = 6006;
-        saved.worldSpaceYaw = false;
-        Check(saved.Save(TmpPath().c_str(), kSchema), "save succeeds");
-
-        Config loaded;
-        Check(loaded.Load(TmpPath().c_str(), kSchema), "reload succeeds");
-        Check(loaded.udpPort == 6006, "round-trip preserves port");
-        Check(loaded.worldSpaceYaw == false, "round-trip preserves worldSpaceYaw");
-        RemoveTmp();
+        std::printf("RE2HeadTracking config tests\n============================\n");
+        CommittedFileIsTheFreshRender();
+        TheFileCarriesNoPoseShapingOrReticle();
+        TheLeanScaleIsFolded();
+        EveryHotkeyDefaultIsTheFleets();
+        FirstLaunchCreatesTheCommittedFile();
+        TogglesSaveTheirRowsOnly();
+        std::filesystem::remove_all(ScratchRoot());
+    } catch (const std::exception& e) {
+        std::printf("FAIL: %s\n", e.what());
+        return 1;
     }
 
     if (g_failures == 0) {
-        std::cout << "Config tests: all passed\n";
-    } else {
-        std::cout << "Config tests: " << g_failures << " failure(s)\n";
+        std::printf("All tests passed!\n");
+        return 0;
     }
-    return g_failures;
+    std::printf("%d test(s) FAILED\n", g_failures);
+    return 1;
 }

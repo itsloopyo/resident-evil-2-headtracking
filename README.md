@@ -4,6 +4,8 @@
 
 An unofficial head tracking mod for Resident Evil 2 that moves the camera with your head while your mouse or controller keeps aiming, driven by OpenTrack over UDP, with no VR headset required.
 
+> **Updating from an earlier build:** settings now live in `reframework\plugins\CameraUnlock.ini`. The first start of this version reads your settings from `HeadTracking.ini` into it, and never changes `HeadTracking.ini`. The sensitivity and axis inversion settings are gone: at the values every build shipped the view moves as it did, and a value you changed is not carried over, so set it in your tracker instead. See [Configuration](#configuration).
+
 > [!CAUTION]
 > ## Experimental prototype - expect missing core features
 >
@@ -48,7 +50,7 @@ If the installer can't find your game:
 If you prefer to place files by hand (or are using the Nexus ZIP, which contains only the plugin files):
 
 1. Install [REFramework](https://github.com/praydog/REFramework-nightly/releases) for RE2 by extracting it to the game root.
-2. Copy `RE2HeadTracking.dll` and `HeadTracking.ini` into `<game>/reframework/plugins/`.
+2. Copy `RE2HeadTracking.dll` into `<game>/reframework/plugins/`. The mod creates `CameraUnlock.ini` beside it on first launch.
 
 ## Setting Up OpenTrack
 
@@ -113,7 +115,9 @@ view sits off to one side, centre it in the tracker.
 
 ## Controls
 
-Two equivalent binding sets, use whichever your keyboard has:
+Two equivalent binding sets, use whichever your keyboard has. These are the defaults: each
+action's keys are a list under `[Hotkeys]` in `CameraUnlock.ini`, chords included, and any of them
+can be changed or removed.
 
 | Action                     | Nav-cluster | Chord          |
 |----------------------------|-------------|----------------|
@@ -123,66 +127,117 @@ Two equivalent binding sets, use whichever your keyboard has:
 
 `Page Up` / `Ctrl+Shift+G` turns positional (6DOF) tracking off and on. Head rotation keeps running either way.
 
+The positional tracking choice and the yaw mode are saved to `CameraUnlock.ini` the moment you
+change them, so the next launch starts with the same choice. Toggling tracking on or off with `End`
+lasts for the session only: each launch starts with tracking on or off as `EnableOnStartup` says.
+
 ## Configuration
 
-The mod creates a config file at `reframework/plugins/HeadTracking.ini` on first run. Edit it to customize behavior, then relaunch the game. Delete the file to reset to defaults.
+<!-- cameraunlock:config -->
+The mod reads its settings from `reframework\plugins\CameraUnlock.ini` in the game folder, and creates the file when it starts and finds none. Edit it with any text editor.
 
-A comment has to sit on its own line, above the key. The parser hands the whole
-text after `=` to the value reader. For a `true`/`false` or text setting that
-text is compared as a whole, so a trailing `; note` makes the comparison fail
-and the setting silently keeps its default. Numeric settings survive a trailing
-comment because the number is read off the front of the text, which is why some
-lines below still carry one. Putting every comment on its own line always works.
+A setting set to `default` takes its value from `Defaults.ini`, which every head tracking mod that keeps its settings in `CameraUnlock.ini` reads. Head tracking mods that keep their settings in another file do not read it, and neither do earlier versions of this mod. Writing a value in place of `default` changes that setting for this game only. When the mod saves a setting that a hotkey changed in game, it writes the new value in place of `default`, so that setting no longer follows `Defaults.ini` in this game until you set it to `default` again.
+
+`Defaults.ini` is `%AppData%\CameraUnlock\Defaults.ini` on Windows; `$XDG_CONFIG_HOME/CameraUnlock/Defaults.ini` on Linux, or `~/.config/CameraUnlock/Defaults.ini` where `XDG_CONFIG_HOME` is not set, under Wine and Proton too; and `~/Library/Application Support/CameraUnlock/Defaults.ini` on macOS. The mod's log, where it writes one, names the file it read.
+
+When the mod starts and finds no `Defaults.ini`, it creates one holding the built-in values, unless Windows runs the game as a packaged app. The mod never changes `Defaults.ini` after that. Edit it with any text editor.
+
+Earlier versions of the mod kept these settings in `HeadTracking.ini`, in the same folder. The first time this version starts and finds no `CameraUnlock.ini`, it reads your settings from `HeadTracking.ini` and writes them into `CameraUnlock.ini`. It never changes `HeadTracking.ini`, and does not read it again while `CameraUnlock.ini` exists.
+
+A setting that the defaults below set to `default` is written as `default` when the value imported for it equals its default at that start, which is the value `Defaults.ini` gives it, or the built-in value where `Defaults.ini` gives none. It then follows `Defaults.ini`. Every other setting is written with the value imported for it.
+
+Comments, and keys the mod never read, are not carried over. Nor are these, where your old file had them:
+
+- Reticle settings, and a key that toggled the reticle.
+- A sensitivity, scale, deadzone, response curve or axis inversion you changed from its default. Set these in your tracker instead.
+- The setting for a feature that earlier versions shipped switched off while it was untested. It now follows the mod's default.
+
+An older version of the mod reads `HeadTracking.ini` and never reads `CameraUnlock.ini`, so a setting you change after updating is not in `HeadTracking.ini`.
+
+Deleting only `CameraUnlock.ini` makes the next start read `HeadTracking.ini` again. To go back to the defaults, replace everything in `CameraUnlock.ini` with the defaults below. Every setting they set to `default` then follows `Defaults.ini`.
+
+The built-in value of each setting set to `default` below:
+
+- `UdpPort=4242`
+- `EnableOnStartup=true`
+- `WorldSpaceYaw=true`
+- `LocalSmoothing=0.0`
+- `RemoteSmoothing=0.15`
+- `PositionEnabled=true`
+- `PositionLimitX=0.3`
+- `PositionLimitY=0.2`
+- `PositionLimitZ=0.4`
+- `PositionLimitZBack=0.1`
+- `ToggleKey=End, Ctrl+Shift+Y`
+- `CycleTrackingModeKey=PageUp, Ctrl+Shift+G`
+- `YawModeKey=PageDown, Ctrl+Shift+H`
+
+With every setting at its default, the file reads:
 
 ```ini
+; Resident Evil 2 head tracking settings.
+; Comments start with ; and go on their own line. Text after a value is part of the value.
+; Hotkeys are key names such as End, PageUp or Ctrl+Shift+Y. Separate several with commas; leave empty for none.
+; A setting set to default takes its value from Defaults.ini, which every head tracking mod
+; that keeps its settings in CameraUnlock.ini reads: %AppData%\CameraUnlock\Defaults.ini on
+; Windows, $XDG_CONFIG_HOME/CameraUnlock/Defaults.ini (normally ~/.config/CameraUnlock) on
+; Linux, under Wine and Proton too, and ~/Library/Application Support/CameraUnlock/Defaults.ini
+; on macOS. The log names the file it read. Write a value instead of default to change that
+; setting for this game only.
+
+[CameraUnlock]
+; Written by the mod. Leave this section in place.
+ConfigFormat=1
+
 [Network]
-UDPPort=4242                    ; Must match OpenTrack output port (1024-65535)
-
-[Sensitivity]
-YawMultiplier=1.0               ; Horizontal rotation (0.1-5.0)
-PitchMultiplier=1.0             ; Vertical rotation (0.1-5.0)
-RollMultiplier=1.0              ; Head tilt (0.0-2.0)
-
-[Smoothing]
-LocalSmoothing=0.0              ; Tracker on this machine, loopback (0.0-1.0)
-RemoteSmoothing=0.15            ; Tracker is a remote network device (0.0-1.0)
-
-[Position]
-SensitivityX=2.0                ; Lateral sensitivity (0.1-10.0)
-SensitivityY=2.0                ; Vertical sensitivity (0.1-10.0)
-SensitivityZ=2.0                ; Depth sensitivity (0.1-10.0)
-LimitX=0.30                     ; Max lateral offset in meters
-LimitY=0.20                     ; Max vertical offset in meters
-LimitZ=0.40                     ; Max forward offset in meters
-LimitZBack=0.10                 ; Max backward offset (prevents camera clipping)
-; Invert lateral axis
-InvertX=false
-; Invert vertical axis
-InvertY=false
-; Invert depth axis
-InvertZ=false
-; Enable or disable 6DOF position tracking
-Enabled=true
-
-[Hotkeys]
-; Virtual key codes (hex)
-ToggleKey=0x23                  ; End - enable or disable tracking
-PositionToggleKey=0x21          ; Page Up - Toggle position
-YawModeKey=0x22                 ; Page Down - toggle world/local yaw
+; UDP port the mod receives tracker data on (OpenTrack protocol).
+UdpPort=default
 
 [General]
-; Auto-enable tracking on game start
-AutoEnable=true
-; true = horizon-locked yaw (default), false = camera-local
-WorldSpaceYaw=true
+; true: head tracking is on when the game starts. ToggleKey turns it on and off.
+EnableOnStartup=default
+; true: yaw turns around the world's up axis. false: around the camera's own up axis.
+WorldSpaceYaw=default
+
+[Smoothing]
+; Smoothing when the tracker runs on this PC. 0 is the least, 1 the most.
+LocalSmoothing=default
+; Smoothing when the tracker is another device on the network, such as a phone.
+; 0 is the least, 1 the most.
+RemoteSmoothing=default
+
+[Position]
+; true: moving your head moves the view.
+; Tracking mode at startup. The mode hotkey turns it on and off and saves it here.
+PositionEnabled=default
+; How far, in metres, leaning left or right can move the view.
+PositionLimitX=default
+; How far, in metres, raising or lowering your head can move the view.
+PositionLimitY=default
+; How far, in metres, leaning forward can move the view.
+PositionLimitZ=default
+; How far, in metres, leaning back can move the view.
+PositionLimitZBack=default
+
+[Hotkeys]
+; Turns head tracking on and off.
+ToggleKey=default
+; Changes the tracking mode: rotation and position, or rotation only.
+CycleTrackingModeKey=default
+; Switches yaw between the world's up axis and the camera's own (WorldSpaceYaw).
+YawModeKey=default
 ```
+<!-- /cameraunlock:config -->
+
+The mod has no sensitivity, deadzone or axis inversion settings. It applies the pose your tracker
+sends, so set those in the tracker.
 
 ## Troubleshooting
 
 **Sending a log:**
 - REFramework writes one log per game launch at `<game>/re2_framework_log.txt`. That generic name is used for every RE Engine title, so it is the right file for this game too. If the game folder is not writable it lands in `%APPDATA%\REFramework\<exe name>\` instead.
 - The file is truncated on every launch, so it only ever holds the current session. Attach it as-is to a bug report.
-- This mod's lines are prefixed `[RE2HT]`. The startup sequence to look for is: `Plugin loaded`, `Config loaded from ...`, `UDP receiver started on port ...`, `Initialization complete`, then `First tracker pose received: ...` once the tracker sends anything.
+- This mod's lines are prefixed `[RE2HT]`. The startup sequence to look for is: `Plugin loaded`, `Config Canonical: ...` (`Created` or `Migrated` on the first start of this version), `UDP receiver started on port ...`, `Initialization complete`, then `First tracker pose received: ...` once the tracker sends anything.
 
 **Mod not loading:**
 - Ensure REFramework is installed (`dinput8.dll` in the game root).
@@ -197,11 +252,11 @@ WorldSpaceYaw=true
 - Check that your firewall isn't blocking UDP port 4242.
 
 **Jittery or unstable tracking:**
-- Increase `RemoteSmoothing` (phone or other network tracker) or `LocalSmoothing` (tracker on this PC) in the `[Smoothing]` section of `HeadTracking.ini`.
+- Increase `RemoteSmoothing` (phone or other network tracker) or `LocalSmoothing` (tracker on this PC) in the `[Smoothing]` section of `CameraUnlock.ini`.
 - If using a phone app over WiFi, some jitter is expected. The built-in interpolation helps.
 
 **Wrong rotation axis or yaw feels wrong at extreme angles:**
-- Adjust the sensitivity multipliers or use the Invert settings in the Position section.
+- The mod applies the pose your tracker sends. If an axis moves the wrong way, reverse it in your tracker's settings.
 - Toggle between world-locked and camera-local yaw with `Page Down`. World-locked (default) is horizon-stable; camera-local follows the camera's current up-axis.
 
 ## Updating

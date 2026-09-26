@@ -1,0 +1,33 @@
+# The config differential test's record: the newest published build, the oracle copied from it,
+# the core sources the oracle compiles, and the inputs. check-frozen.ps1 fails when a working-tree
+# path below stops matching its hash. Rows naming <commit>:<path> are provenance, the blobs the
+# oracle came from, and are not checked.
+#
+# Published builds: v0.1.0 (784f778, released 2026-08-20 and withdrawn within the hour, its tag
+# deleted by the revert 5cc9ac6), and the rolling dev pre-release, built from 5cc9ac6 (core
+# 3465659). They read HeadTracking.ini through the same sources and shipped, seeded and wrote the
+# same files; 5cc9ac6, the newer, is the oracle. The import is core's PluginConfigLegacyImport over
+# PluginConfig::Read, which core keeps frozen and pins in its own tests; the differential test
+# compiles it at the current pin on every run, so it is not recorded here.
+#
+# path	sha256	what
+tests/config_differential/oracle/src/pch.h	007b28a3d1a9c5c92ac1a6f90e6ce951e7e3b45ef484d2cdef7b9b861396fc10	the oracle; 5cc9ac6:src/pch.h byte for byte
+tests/config_differential/oracle/src/core/config.h	a4d5595fcc5eec8db03a887b4a4514fd4ccd3f7f2944cfef45dbd057cf88e8ab	the oracle; 5cc9ac6:src/core/config.h byte for byte
+tests/config_differential/oracle/src/core/config.cpp	77306e108cf55a7a11d4b5eca9d76ab8fdabc9382f5992d48016d278b7d31e0c	the oracle; 5cc9ac6:src/core/config.cpp byte for byte
+tests/config_differential/oracle/src/core/constants.h	5c6cbb9945a1f264a98821573184e968cab0ee620b7fd51f90c43e1dd4c8b4e0	the oracle; 5cc9ac6:src/core/constants.h byte for byte
+tests/config_differential/oracle/src/core/logger.h	f093f5b937a8f738be173688fb43e0cedbf1b06c5c195b6be67424bd6d6337c9	the oracle; 5cc9ac6:src/core/logger.h byte for byte
+tests/config_differential/oracle/src/core/logger.cpp	ffb2f39f7c1f59b53a6abd7042ec9ab11de0c220a3947c0667e1b09d0af1fccc	the oracle; 5cc9ac6:src/core/logger.cpp byte for byte
+cameraunlock-core/cpp/include/cameraunlock/config/ini_reader.h	a7ffb44210ff59672fa97e8e5feaa2cb3e81938fcc0334a384c68bc371b3857a	compiled by the oracle and the import; the same bytes at 3465659
+cameraunlock-core/cpp/src/config/ini_reader.cpp	e01515c2656aaf533bae4350dc45b702c3e3d4043935743dcc9bd5ea581fbe1c	compiled by the oracle and the import; the same bytes at 3465659
+tests/config_differential/inputs/shipped-dev.ini	d54e354fab2399ac0391520ef7fbf49f577fc0a94157f6c23eef87dcfd862673	the installer ZIP's plugins/HeadTracking.ini and the decoded reframework/plugins/HeadTracking.ini launcher seed of the dev pre-release and of v0.1.0; bdbdf3c:HeadTracking.ini
+tests/config_differential/inputs/committed-3098dac.ini	d89e293f14110bbf129b1436b4149f57bf59f9ddfd5af7de73a0c5cfbacfc2db	3098dac:HeadTracking.ini, the version committed before bdbdf3c
+tests/config_differential/inputs/first-run-dev.ini	d676037a73122a102e1a4d74f2c172e7aedc04ccd31a5dd646edc499ec637b0a	the first-run output of the dev pre-release and v0.1.0, Config::SetDefaults then Config::Save as 5cc9ac6:src/core/config.cpp writes it, extracted once
+5cc9ac6:src/pch.h	007b28a3d1a9c5c92ac1a6f90e6ce951e7e3b45ef484d2cdef7b9b861396fc10	oracle source
+5cc9ac6:src/core/config.h	a4d5595fcc5eec8db03a887b4a4514fd4ccd3f7f2944cfef45dbd057cf88e8ab	oracle source
+5cc9ac6:src/core/config.cpp	77306e108cf55a7a11d4b5eca9d76ab8fdabc9382f5992d48016d278b7d31e0c	oracle source
+5cc9ac6:src/core/constants.h	5c6cbb9945a1f264a98821573184e968cab0ee620b7fd51f90c43e1dd4c8b4e0	oracle source
+5cc9ac6:src/core/logger.h	f093f5b937a8f738be173688fb43e0cedbf1b06c5c195b6be67424bd6d6337c9	oracle source
+5cc9ac6:src/core/logger.cpp	ffb2f39f7c1f59b53a6abd7042ec9ab11de0c220a3947c0667e1b09d0af1fccc	oracle source
+5cc9ac6:src/core/mod.cpp	6247d64b90532f52110daa93133d18fa2f73326943c9cd49632bd6bc1e9d7373	the published startup code the test models (Mod::Initialize, Mod::LoadConfig)
+5cc9ac6:src/plugin_main.cpp	148cef687f464e792b58db66c00221ef223c3073815dd2e5d6e5a15abe80669c	the published hotkey registration the test models
+5cc9ac6:HeadTracking.ini	d54e354fab2399ac0391520ef7fbf49f577fc0a94157f6c23eef87dcfd862673	the shipped file's blob

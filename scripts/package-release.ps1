@@ -31,11 +31,6 @@ if (-not (Test-Path $dllPath)) {
     throw "RE2HeadTracking.dll not found at: $dllPath"
 }
 
-$iniPath = Join-Path $projectDir "HeadTracking.ini"
-if (-not (Test-Path $iniPath)) {
-    throw "HeadTracking.ini not found at: $iniPath"
-}
-
 $scriptsDir = Join-Path $projectDir "scripts"
 foreach ($script in @("install.cmd", "uninstall.cmd")) {
     $scriptPath = Join-Path $scriptsDir $script
@@ -63,9 +58,6 @@ New-Item -ItemType Directory -Path $pluginsDir -Force | Out-Null
 Copy-Item $dllPath -Destination $pluginsDir -Force
 Write-Host "  plugins/RE2HeadTracking.dll" -ForegroundColor Green
 
-Copy-Item $iniPath -Destination $pluginsDir -Force
-Write-Host "  plugins/HeadTracking.ini" -ForegroundColor Green
-
 # Stage the vendored REFramework so install.cmd can extract it offline.
 # Vendor tree is the install-time source of truth; the build/package
 # pipeline never refreshes it - bump via `pixi run update-deps`.
@@ -88,14 +80,15 @@ foreach ($vendorFile in @("RE2.zip", "LICENSE", "README.md")) {
 # launcher-manifest.json is the launcher's canonical manifest (the file lopari
 # reads at the package root). It ships at the GitHub ZIP root and is the active
 # deploy contract: delivery_mode "manifest" drives lopari's native,
-# receipt-tracked deployment (extract the vendored loader, copy files, seed the
-# INI). install.cmd / uninstall.cmd are retained only for users who download the
+# receipt-tracked deployment (extract the vendored loader, copy files).
+# install.cmd / uninstall.cmd are retained only for users who download the
 # release ZIP straight from GitHub and run it by hand; lopari never runs them in
 # manifest mode. The flatscreen VR-DLL strip is no longer install-time logic -
 # the vendored REFramework.zip is the universal package (loader only, no VR
 # runtime DLLs or autorun Lua), so both the manifest deploy and install.cmd
 # extract a flatscreen-clean tree. (Not staged into the Nexus ZIP - Nexus users
-# do not use the launcher.)
+# do not use the launcher.) No config is shipped in either ZIP: the mod
+# creates CameraUnlock.ini at first launch.
 $launcherManifestPath = Join-Path $projectDir "launcher-manifest.json"
 if (-not (Test-Path $launcherManifestPath)) {
     throw "launcher-manifest.json not found at: $launcherManifestPath"
@@ -151,9 +144,6 @@ New-Item -ItemType Directory -Path $nexusPluginsDir -Force | Out-Null
 
 Copy-Item $dllPath -Destination $nexusPluginsDir -Force
 Write-Host "  reframework/plugins/RE2HeadTracking.dll" -ForegroundColor Green
-
-Copy-Item $iniPath -Destination $nexusPluginsDir -Force
-Write-Host "  reframework/plugins/HeadTracking.ini" -ForegroundColor Green
 
 $nexusZipName = "RE2HeadTracking-v$version-nexus.zip"
 $nexusZipPath = Join-Path $releaseDir $nexusZipName
