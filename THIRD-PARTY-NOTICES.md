@@ -14,7 +14,7 @@ Resident Evil 2.
 |-----------|---------|---------|--------------|
 | REFramework (loader) | `nightly-01394` / REFramework `ec6c81fd39831b328027ae00e102bc9c9c3f8aa5` | MIT | Bundled verbatim in the installer ZIP |
 | REFramework plugin API headers | REFramework `ec6c81fd39831b328027ae00e102bc9c9c3f8aa5` | MIT | Compiled into `RE2HeadTracking.dll` |
-| cameraunlock-core | `3f3a821aa00d5b87ecde7c4af77585ff2fc71ff5` | MIT | Compiled into `RE2HeadTracking.dll` |
+| cameraunlock-core | `4a5e7f4d1c37efb9074f7f3651cde8327b64715a` | MIT | Compiled into `RE2HeadTracking.dll` |
 | OpenTrack | n/a | ISC | Not bundled; UDP protocol interoperability only |
 
 ---
@@ -77,7 +77,7 @@ mod's LICENSE, so its notice is reproduced here in full rather than treated as
 covered by ours.
 
 - Upstream: https://github.com/itsloopyo/cameraunlock-core
-- Pinned commit: `3f3a821aa00d5b87ecde7c4af77585ff2fc71ff5`
+- Pinned commit: `4a5e7f4d1c37efb9074f7f3651cde8327b64715a`
 
 ```
 MIT License
