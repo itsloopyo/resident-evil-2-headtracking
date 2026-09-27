@@ -2,16 +2,7 @@
 
 ![Resident Evil 2 running with this mod](https://raw.githubusercontent.com/itsloopyo/resident-evil-2-headtracking/main/assets/readme-clip.gif)
 
-An unofficial head tracking mod for Resident Evil 2 that moves the camera with your head while your mouse or controller keeps aiming, driven by OpenTrack over UDP, with no VR headset required.
-
-> **Updating from an earlier build:** settings now live in `reframework\plugins\CameraUnlock.ini`. The first start of this version reads your settings from `HeadTracking.ini` into it, and never changes `HeadTracking.ini`. The sensitivity and axis inversion settings are gone: at the values every build shipped the view moves as it did, and a value you changed is not carried over, so set it in your tracker instead. See [Configuration](#configuration).
-
-> [!CAUTION]
-> ## Experimental prototype - expect missing core features
->
-> This is **not** a finished mod.
->
-> Current builds may only test whether head tracking can drive the camera. Bug fixes and core features like decoupled look/aim, independent reticle behavior, correct shot direction, off-screen reticle support, movement handling, and comfort tuning may be missing at this early stage of development.
+An unofficial head tracking mod for Resident Evil 2 that moves the camera with your head while your mouse or controller keeps aiming, driven by a webcam, phone, or any OpenTrack compatible tracker, with no VR headset required.
 
 ## Features
 
@@ -29,7 +20,7 @@ An unofficial head tracking mod for Resident Evil 2 that moves the camera with y
 
 ### Lopari
 
-Once this mod is available in Lopari, download [Lopari](https://lopari.app), choose **Resident Evil 2**, and click
+Download [Lopari](https://lopari.app), choose **Resident Evil 2**, and click
 **Play with head tracking**.
 
 ### Standalone Installer
@@ -136,25 +127,11 @@ lasts for the session only: each launch starts with tracking on or off as `Enabl
 <!-- cameraunlock:config -->
 The mod reads its settings from `reframework\plugins\CameraUnlock.ini` in the game folder, and creates the file when it starts and finds none. Edit it with any text editor.
 
-A setting set to `default` takes its value from `Defaults.ini`, which every head tracking mod that keeps its settings in `CameraUnlock.ini` reads. Head tracking mods that keep their settings in another file do not read it, and neither do earlier versions of this mod. Writing a value in place of `default` changes that setting for this game only. When the mod saves a setting that a hotkey changed in game, it writes the new value in place of `default`, so that setting no longer follows `Defaults.ini` in this game until you set it to `default` again.
+A setting set to `default` takes its value from `Defaults.ini`, which every head tracking mod that keeps its settings in `CameraUnlock.ini` reads. Head tracking mods that keep their settings in another file do not read it. Writing a value in place of `default` changes that setting for this game only. When the mod saves a setting that a hotkey changed in game, it writes the new value in place of `default`, so that setting no longer follows `Defaults.ini` in this game until you set it to `default` again.
 
 `Defaults.ini` is `%AppData%\CameraUnlock\Defaults.ini` on Windows; `$XDG_CONFIG_HOME/CameraUnlock/Defaults.ini` on Linux, or `~/.config/CameraUnlock/Defaults.ini` where `XDG_CONFIG_HOME` is not set, under Wine and Proton too; and `~/Library/Application Support/CameraUnlock/Defaults.ini` on macOS. The mod's log, where it writes one, names the file it read.
 
 When the mod starts and finds no `Defaults.ini`, it creates one holding the built-in values, unless Windows runs the game as a packaged app. The mod never changes `Defaults.ini` after that. Edit it with any text editor.
-
-Earlier versions of the mod kept these settings in `HeadTracking.ini`, in the same folder. The first time this version starts and finds no `CameraUnlock.ini`, it reads your settings from `HeadTracking.ini` and writes them into `CameraUnlock.ini`. It never changes `HeadTracking.ini`, and does not read it again while `CameraUnlock.ini` exists.
-
-A setting that the defaults below set to `default` is written as `default` when the value imported for it equals its default at that start, which is the value `Defaults.ini` gives it, or the built-in value where `Defaults.ini` gives none. It then follows `Defaults.ini`. Every other setting is written with the value imported for it.
-
-Comments, and keys the mod never read, are not carried over. Nor are these, where your old file had them:
-
-- Reticle settings, and a key that toggled the reticle.
-- A sensitivity, scale, deadzone, response curve or axis inversion you changed from its default. Set these in your tracker instead.
-- The setting for a feature that earlier versions shipped switched off while it was untested. It now follows the mod's default.
-
-An older version of the mod reads `HeadTracking.ini` and never reads `CameraUnlock.ini`, so a setting you change after updating is not in `HeadTracking.ini`.
-
-Deleting only `CameraUnlock.ini` makes the next start read `HeadTracking.ini` again. To go back to the defaults, replace everything in `CameraUnlock.ini` with the defaults below. Every setting they set to `default` then follows `Defaults.ini`.
 
 The built-in value of each setting set to `default` below:
 
@@ -237,7 +214,7 @@ sends, so set those in the tracker.
 **Sending a log:**
 - REFramework writes one log per game launch at `<game>/re2_framework_log.txt`. That generic name is used for every RE Engine title, so it is the right file for this game too. If the game folder is not writable it lands in `%APPDATA%\REFramework\<exe name>\` instead.
 - The file is truncated on every launch, so it only ever holds the current session. Attach it as-is to a bug report.
-- This mod's lines are prefixed `[RE2HT]`. The startup sequence to look for is: `Plugin loaded`, `Config Canonical: ...` (`Created` or `Migrated` on the first start of this version), `UDP receiver started on port ...`, `Initialization complete`, then `First tracker pose received: ...` once the tracker sends anything.
+- This mod's lines are prefixed `[RE2HT]`. The startup sequence to look for is: `Plugin loaded`, `Config Canonical: ...`, `UDP receiver started on port ...`, `Initialization complete`, then `First tracker pose received: ...` once the tracker sends anything.
 
 **Mod not loading:**
 - Ensure REFramework is installed (`dinput8.dll` in the game root).
