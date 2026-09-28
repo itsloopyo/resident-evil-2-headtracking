@@ -23,6 +23,11 @@ namespace ref = cameraunlock::reframework;
 static constexpr const char* kPlayerManager = "app.ropeway.PlayerManager";
 static constexpr const char* kPlayerCondition = "app.ropeway.survivor.player.PlayerCondition";
 static constexpr const char* kGuiMaster = "app.ropeway.gui.GUIMaster";
+// The aim camera's own flag, read for the lean while aiming, not for the gate.
+// RE3's offline.camera.CameraSystem carries get_IsHoldWeaponCamera (its TDB
+// dump); RE3 is RE2's code under another root namespace, so the name is taken
+// from there and checked at runtime by the "Aim state" log line.
+static constexpr const char* kCameraSystem = "app.ropeway.camera.CameraSystem";
 
 static struct {
     reframework::API::Method* getCurrentPlayer = nullptr;
@@ -30,6 +35,7 @@ static struct {
     reframework::API::Method* getIsEvent = nullptr;
     reframework::API::Method* getIsOpenPause = nullptr;
     bool available = false;
+    reframework::API::Method* getIsHoldWeaponCamera = nullptr;
 } g_checks;
 
 static void Discover() {
@@ -53,6 +59,12 @@ static void Discover() {
         g_checks.available ? "ready" : "unavailable",
         g_checks.getCurrentPlayer, g_checks.getCurrentPlayerCondition,
         g_checks.getIsEvent, g_checks.getIsOpenPause);
+
+    auto cameraSystemType = tdb->find_type(kCameraSystem);
+    if (cameraSystemType) g_checks.getIsHoldWeaponCamera = cameraSystemType->find_method("get_IsHoldWeaponCamera");
+    ref::LogInfo("Aim state %s: %s.get_IsHoldWeaponCamera=%p",
+                 g_checks.getIsHoldWeaponCamera ? "ready" : "unavailable, the lean is never eased while aiming",
+                 kCameraSystem, g_checks.getIsHoldWeaponCamera);
 }
 
 // The three managed calls, guarded together. A probe that faults reports no
@@ -97,5 +109,25 @@ static ref::GameplayGate g_gate{&Discover, &Check};
 ref::GameplayGate* GameplayGateInstance() { return &g_gate; }
 
 bool IsInGameplay() { return g_gate.IsInGameplay(); }
+
+static bool g_aimFaultLogged = false;
+
+// Called only past the gate, whose first refresh ran Discover.
+bool IsAiming() {
+    if (!g_checks.getIsHoldWeaponCamera) return false;
+    __try {
+        auto system = reframework::API::get()->get_managed_singleton(kCameraSystem);
+        if (!system) return false;
+        return ref::CallMethodBool(g_checks.getIsHoldWeaponCamera, system);
+    } __except(EXCEPTION_EXECUTE_HANDLER) {
+        if (!g_aimFaultLogged) {
+            g_aimFaultLogged = true;
+            ref::LogWarning("Aim state: %s.get_IsHoldWeaponCamera faulted; the sights read as down on every "
+                            "frame it does (logged once)",
+                            kCameraSystem);
+        }
+    }
+    return false;
+}
 
 } // namespace RE2HT

@@ -21,6 +21,10 @@ inline constexpr const char* kGameName = "Resident Evil 2";
 // canonicalConfig: settings live in reframework\plugins\CameraUnlock.ini, and
 // HeadTracking.ini, the file every earlier build read, is imported once while
 // CameraUnlock.ini is absent and never written.
+//
+// trueFreeLook: RE2 has an aim state (IsAiming, game_state_detector.cpp), so it
+// ships sights locked and true free look ([Position] TrueFreeLook,
+// [Hotkeys] TrueFreeLookKey).
 inline constexpr cameraunlock::reframework::PluginConfigSchema kConfigSchema{
     /*title*/ "RE2 Head Tracking",
     /*positionInvertKeys*/ true,
@@ -29,6 +33,7 @@ inline constexpr cameraunlock::reframework::PluginConfigSchema kConfigSchema{
     /*positionSensitivity*/ 2.0f,
     /*modId*/ "re2",
     /*canonicalConfig*/ true,
+    /*trueFreeLook*/ true,
 };
 
 } // namespace RE2HT

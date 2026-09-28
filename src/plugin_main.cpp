@@ -53,6 +53,7 @@ const ref::PluginBootstrapDescriptor kPlugin = [] {
         static_cast<int>(std::size(kControllerTypeCandidates));
     d.camera.aimDistanceMeters = kAimDistanceMeters;
     d.camera.gate = RE2HT::GameplayGateInstance();
+    d.camera.isAiming = &RE2HT::IsAiming;
     d.camera.onInit = []() { ref::InitGuiMethods(); };
     d.preGuiDrawElement = &RE2HT::OnPreGuiDrawElement;
     return d;
